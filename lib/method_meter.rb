@@ -8,7 +8,7 @@ module MethodMeter
   mattr_accessor :events, :subscribers, :data
 
   class << self
-    def observe(object=Arithmeter)
+    def observe(object)
       self.events = [] if self.events.blank?
 
       DefinedMethods.in(object).each do |group|

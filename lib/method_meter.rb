@@ -1,6 +1,5 @@
 require 'method_meter/version'
 
-require 'byebug'
 require 'active_support'
 require 'active_support/core_ext/string'
 require 'defined_methods'

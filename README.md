@@ -1,6 +1,6 @@
 # MethodMeter
 
-`MethodMeter` is a library module that instruments methods defined in a given object. These methods are not from included or extended modules. These methods are not also from parent objects. By object, it means either a `class` or `module`.
+`MethodMeter` is a library module that instruments **methods defined in a given object**. These methods are NOT from included or extended modules. These methods are also NOT from parent objects. By object, it means either a `class` or `module`.
 
 ## Installation
 
@@ -41,6 +41,10 @@ ap MethodMeter.measurement
 
 More examples found here: https://github.com/wnuqui/method_meter/tree/master/examples
 
+## In action
+
+![method_meter in action](1-basic-rb.gif)
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
@@ -49,7 +53,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/method_meter. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
+Bug reports and pull requests are welcome on GitHub at https://github.com/wnuqui/method_meter. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
 
 ## License
 

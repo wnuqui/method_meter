@@ -1,4 +1,4 @@
-# MethodMeter
+# MethodMeter [![Build Status](https://wnuqui.semaphoreci.com/badges/method_meter/branches/master.svg?style=shields)](https://wnuqui.semaphoreci.com/projects/method_meter)
 
 `MethodMeter` is a library module that instruments **methods defined in a given object**. These methods are NOT from included or extended modules. These methods are also NOT from parent objects. By object, it means either a `class` or `module`.
 

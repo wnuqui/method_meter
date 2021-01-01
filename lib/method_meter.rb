@@ -5,15 +5,19 @@ require 'active_support/core_ext/string'
 require 'defined_methods'
 
 module MethodMeter
-  mattr_accessor :events, :subscribers, :data
+  mattr_accessor :events, :subscribers, :data, :exceptions
 
   class << self
-    def observe(object)
-      self.events = [] if self.events.blank?
+    def observe(object, excepted_methods=[])
+      self.events = [] if self.events.nil?
+      self.exceptions = [] if self.exceptions.nil?
+      self.exceptions |= excepted_methods
 
       DefinedMethods.in(object).each do |group|
         group[:object].module_eval do
           group[:methods].each do |method|
+            next if MethodMeter.exceptions.include?(method)
+
             method_with_profiling     = method.to_s + '_with_profiling'
             method_without_profiling  = method.to_s + '_without_profiling'
             event_name                = DefinedMethods.fqmn(group, method)

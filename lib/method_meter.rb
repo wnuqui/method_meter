@@ -14,23 +14,7 @@ module MethodMeter
       DefinedMethods.in(object).each do |group|
         group[:object].module_eval do
           group[:methods].each do |method|
-            method_with_profiling, method_without_profiling, event_name = MethodMeter.profiling_method_names(method, group)
-
-            next unless MethodMeter.instrument_method?(method, event_name)
-
-            MethodMeter.events << event_name
-
-            define_method(method_with_profiling) do |*args, &block|
-              ActiveSupport::Notifications.instrument(event_name, args) do
-                send(method_without_profiling, *args, &block)
-              end
-            end
-
-            alias_method method_without_profiling, method
-            alias_method method, method_with_profiling
-
-            private method_with_profiling if group[:private]
-            protected method_with_profiling if group[:protected]
+            MethodMeter.define_instrumented_method(group[:object], method, group[:private], group[:protected], group[:singleton])
           end
         end
       end
@@ -76,16 +60,40 @@ module MethodMeter
       end
     end
 
-    def profiling_method_names(method, group)
+    def profiling_method_names(method)
       method_with_profiling     = method.to_s + '_with_profiling'
       method_without_profiling  = method.to_s + '_without_profiling'
-      event_name                = DefinedMethods.fqmn(group, method)
-      [method_with_profiling, method_without_profiling, event_name]
+      [method_with_profiling, method_without_profiling]
     end
 
     def instrument_method?(method, event_name)
       !exceptions.include?(method) && !events.include?(event_name) && (event_name =~ /_profiling/).nil?
     end
+
+    def define_instrumented_method(object, method, is_private, is_protected, is_singleton)
+      object.module_eval do
+        method_with_profiling, method_without_profiling = MethodMeter.profiling_method_names(method)
+        event_name = DefinedMethods.fqmn(object.to_s, method, is_singleton)
+
+        return unless MethodMeter.instrument_method?(method, event_name)
+
+        MethodMeter.events << event_name
+
+        define_method(method_with_profiling) do |*args, &block|
+          ActiveSupport::Notifications.instrument(event_name, args) do
+            send(method_without_profiling, *args, &block)
+          end
+        end
+
+        alias_method method_without_profiling, method
+        alias_method method, method_with_profiling
+
+        private method_with_profiling if is_private
+        protected method_with_profiling if is_protected
+      end
+    end
+
+    private
 
     def init(excepted_methods)
       self.events =       [] if events.nil?

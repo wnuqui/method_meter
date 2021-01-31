@@ -37,25 +37,25 @@ module MethodMeter
     end
 
     def measure!(key)
-      self.data[key] = {}
+      data[key] = {}
 
-      self.events.each do |event|
-        self.subscribers << ActiveSupport::Notifications.subscribe(event) do |_, started_at, finished_at, _, _|
-          self.data[key][event] = [] unless self.data[key].has_key?(event)
-          self.data[key][event] << (finished_at - started_at)
+      events.each do |event|
+        subscribers << ActiveSupport::Notifications.subscribe(event) do |_, started_at, finished_at, _, _|
+          data[key][event] = [] unless data[key].has_key?(event)
+          data[key][event] << (finished_at - started_at)
         end
       end
 
       yield
 
-      self.subscribers.each do |subscriber|
+      subscribers.each do |subscriber|
         ActiveSupport::Notifications.unsubscribe(subscriber)
       end
     end
 
     def measurement
       @measurement ||= begin
-        self.data.collect do |key, measurement_records|
+        data.collect do |key, measurement_records|
           _measurement = measurement_records.collect do |method_name, records|
             total_calls   = records.size
             total_runtime = records.reduce(:+) * 1000
@@ -88,11 +88,11 @@ module MethodMeter
     end
 
     def init(excepted_methods)
-      self.events =       [] if self.events.nil?
-      self.exceptions =   [] if self.exceptions.nil?
+      self.events =       [] if events.nil?
+      self.exceptions =   [] if exceptions.nil?
       self.exceptions |=  excepted_methods
       self.subscribers  = []
-      self.data         = {} if self.data.blank?
+      self.data         = {} if data.blank?
     end
   end
 end

@@ -37,26 +37,28 @@ module MethodMeter
     end
 
     def measurement
-      @measurement ||= begin
-        data.collect do |key, measurement_records|
-          _measurement = measurement_records.collect do |method_name, records|
-            total_calls   = records.size
-            total_runtime = records.reduce(:+) * 1000
-            average       = total_runtime / total_calls
+      measurement = {}
 
-            {
-              method: method_name,
-              min: records.min * 1000,
-              max: records.max * 1000,
-              average: average,
-              total_runtime: total_runtime,
-              total_calls: total_calls,
-            }
-          end
+      data.each do |key, measurement_records|
+        _measurement = measurement_records.collect do |method_name, records|
+          total_calls   = records.size
+          total_runtime = records.reduce(:+) * 1000
+          average       = total_runtime / total_calls
 
-          { key => _measurement }
+          {
+            method: method_name,
+            min: records.min * 1000,
+            max: records.max * 1000,
+            average: average,
+            total_runtime: total_runtime,
+            total_calls: total_calls,
+          }
         end
+
+        measurement[key] = _measurement
       end
+
+      measurement
     end
 
     def profiling_method_names(method)

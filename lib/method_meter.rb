@@ -76,7 +76,8 @@ module MethodMeter
     def define_metering_method(object, method, is_private, is_protected, is_singleton)
       object.module_eval do
         method_with_profiling, method_without_profiling = MethodMeter.profiling_method_names(method)
-        method_name = DefinedMethods.fqmn(object.to_s, method, is_singleton)
+        object_name = is_singleton ? object.to_s.split(':').last.gsub('>', '') : object.to_s
+        method_name = DefinedMethods.fqmn(object_name, method, is_singleton)
 
         return unless MethodMeter.meter_method?(method_name)
 

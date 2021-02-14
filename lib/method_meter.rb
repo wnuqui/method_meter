@@ -1,11 +1,10 @@
 require 'method_meter/version'
 
 require 'active_support'
-require 'active_support/core_ext/string'
 require 'defined_methods'
 
 module MethodMeter
-  mattr_accessor :events, :subscribers, :data, :exceptions
+  mattr_accessor :metered_methods, :subscribers, :data, :exceptions
 
   class << self
     def observe(object, excepted_methods=[])
@@ -14,7 +13,7 @@ module MethodMeter
       DefinedMethods.in(object).each do |group|
         group[:object].module_eval do
           group[:methods].each do |method|
-            MethodMeter.define_instrumented_method(group[:object], method, group[:private], group[:protected], group[:singleton])
+            MethodMeter.define_metering_method(group[:object], method, group[:private], group[:protected], group[:singleton])
           end
         end
       end
@@ -23,10 +22,10 @@ module MethodMeter
     def measure!(key)
       data[key] = {}
 
-      events.each do |event|
-        subscribers << ActiveSupport::Notifications.subscribe(event) do |_, started_at, finished_at, _, _|
-          data[key][event] = [] unless data[key].has_key?(event)
-          data[key][event] << (finished_at - started_at)
+      metered_methods.each do |metered_method|
+        subscribers << ActiveSupport::Notifications.subscribe(metered_method) do |_, started_at, finished_at, _, _|
+          data[key][metered_method] = [] unless data[key].has_key?(metered_method)
+          data[key][metered_method] << (finished_at - started_at)
         end
       end
 
@@ -38,26 +37,28 @@ module MethodMeter
     end
 
     def measurement
-      @measurement ||= begin
-        data.collect do |key, measurement_records|
-          _measurement = measurement_records.collect do |method_name, records|
-            total_calls   = records.size
-            total_runtime = records.reduce(:+) * 1000
-            average       = total_runtime / total_calls
+      measurement = {}
 
-            {
-              method: method_name,
-              min: records.min * 1000,
-              max: records.max * 1000,
-              average: average,
-              total_runtime: total_runtime,
-              total_calls: total_calls,
-            }
-          end
+      data.each do |key, measurement_records|
+        _measurement = measurement_records.collect do |method_name, records|
+          total_calls   = records.size
+          total_runtime = records.reduce(:+) * 1000
+          average       = total_runtime / total_calls
 
-          { key => _measurement }
+          {
+            method: method_name,
+            min: records.min * 1000,
+            max: records.max * 1000,
+            average: average,
+            total_runtime: total_runtime,
+            total_calls: total_calls,
+          }
         end
+
+        measurement[key] = _measurement
       end
+
+      measurement
     end
 
     def profiling_method_names(method)
@@ -66,21 +67,24 @@ module MethodMeter
       [method_with_profiling, method_without_profiling]
     end
 
-    def instrument_method?(method, event_name)
-      !exceptions.include?(method) && !events.include?(event_name) && (event_name =~ /_profiling/).nil?
+    def meter_method?(method_name)
+      object_name, method = method_name.split('#')
+      object_name, method = method_name.split('.') if method.nil?
+      !exceptions.include?(method.to_sym) && !metered_methods.include?(method_name) && (method_name =~ /_profiling/).nil?
     end
 
-    def define_instrumented_method(object, method, is_private, is_protected, is_singleton)
+    def define_metering_method(object, method, is_private, is_protected, is_singleton)
       object.module_eval do
         method_with_profiling, method_without_profiling = MethodMeter.profiling_method_names(method)
-        event_name = DefinedMethods.fqmn(object.to_s, method, is_singleton)
+        object_name = is_singleton ? object.to_s.split(':').last.gsub('>', '') : object.to_s
+        method_name = DefinedMethods.fqmn(object_name, method, is_singleton)
 
-        return unless MethodMeter.instrument_method?(method, event_name)
+        return unless MethodMeter.meter_method?(method_name)
 
-        MethodMeter.events << event_name
+        MethodMeter.metered_methods << method_name
 
         define_method(method_with_profiling) do |*args, &block|
-          ActiveSupport::Notifications.instrument(event_name, args) do
+          ActiveSupport::Notifications.instrument(method_name, args) do
             send(method_without_profiling, *args, &block)
           end
         end
@@ -96,11 +100,11 @@ module MethodMeter
     private
 
     def init(excepted_methods)
-      self.events =       [] if events.nil?
-      self.exceptions =   [] if exceptions.nil?
-      self.exceptions |=  excepted_methods
-      self.subscribers  = []
-      self.data         = {} if data.blank?
+      self.metered_methods = [] if metered_methods.nil?
+      self.exceptions      = [] if exceptions.nil?
+      self.exceptions     |= excepted_methods
+      self.subscribers     = []
+      self.data            = {} if data.blank?
     end
   end
 end
